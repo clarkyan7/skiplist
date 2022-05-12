@@ -3,5 +3,4 @@
 
 跳表的原理介绍可以参考[《动图带你深入了解——跳跃列表（SkipList）》](https://juejin.cn/post/7015396092351086622)，文章进行了详细的介绍。  
 代码参考了[HiWong的实现](https://github.com/HiWong/SkipListPro)，并进行了一些简化，主要是用[二级指针](https://coolshell.cn/articles/8990.html)取代了footer节点。个人感觉footer节点设置一个最大默认值，并与key进行比较的做法不是很合适。  
-代码使用的是单链表的形式，删除时不同层级之间每次都需要从头查找，才能定位到待删除节点的前置节点，以进行指针操作。如果需要加快删除的速度，可以使用双向链表的方式，用空间换时间。  
-双向链路的实现可以参考https://github.com/begeekmyfriend/skiplist
+代码使用的是单链表的形式。
