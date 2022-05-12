@@ -80,7 +80,7 @@ public:
         return true;
     }
 
-    Node<K, V>* Search(const K& key) {
+    Node<K, V>* Search(const K& key) const {
         Node<K,V>** ptr = &head_[level_ - 1];
         for (int level = level_ - 1; level >= 0; level--, ptr--) {
             while (*ptr && (*ptr)->key() < key) {
@@ -119,7 +119,7 @@ public:
         }
     }
 
-    std::string ToString() {
+    std::string ToString() const {
         std::stringstream ss;
         for (int i = level_ - 1; i >= 0; i--) {
             for (Node<K, V>* ptr = head_[i]; ptr != nullptr; ptr = ptr->forward_[i]) {
@@ -129,6 +129,10 @@ public:
         }
         return ss.str();
     }
+
+    uint32_t Level() const { return level_; }
+
+    uint32_t Size() const { return count_; }
 
 private:
     uint32_t RandomLevel() const {
