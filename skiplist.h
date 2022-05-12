@@ -12,136 +12,137 @@ class SkipList;
 template <typename K, typename V>
 class Node {
 public:
-	Node(uint32_t l, const K& k, const V& v) : level_(l), key_(k), value_(v) {
-		forward_ = new Node * [level_];
-	}
+    Node(uint32_t l, const K& k, const V& v) : level_(l), key_(k), value_(v) {
+        forward_ = new Node * [level_];
+    }
 
-	~Node() {
-		if (forward_) {
-			delete[] forward_;
-		}
-	}
+    ~Node() {
+        if (forward_) {
+            delete[] forward_;
+        }
+    }
 
-	const K& key() const { return key_; }
-	const V& value() const { return value_; }
+    const K& key() const { return key_; }
+    const V& value() const { return value_; }
 
-	friend class SkipList<K, V>;
+    friend class SkipList<K, V>;
 
 private:
-	K key_;
-	V value_;
-	uint32_t level_;
-	Node<K, V>** forward_;
+    K key_;
+    V value_;
+    uint32_t level_;
+    Node<K, V>** forward_;
 };
 
 
 template <typename K, typename V>
 class SkipList {
 public:
-	explicit SkipList(uint32_t max_level) : max_level_(max_level), level_(0), count_(0) {
-		head_ = new Node<K,V>* [max_level_];
-		for (uint32_t i = 0; i < max_level_; i++) {
-			head_[i] = nullptr;
-		}
-	}
+    explicit SkipList(uint32_t max_level) : max_level_(max_level), level_(0), count_(0) {
+        head_ = new Node<K,V>* [max_level_];
+        for (uint32_t i = 0; i < max_level_; i++) {
+            head_[i] = nullptr;
+        }
+    }
 
-	~SkipList() {
-		Node<K, V>* ptr = head_[0];
-		while (ptr != nullptr) {
-			Node<K, V>* next = ptr->forward_[0];
-			delete ptr;
-			ptr = next;
-		}
+    ~SkipList() {
+        Node<K, V>* ptr = head_[0];
+        while (ptr != nullptr) {
+            Node<K, V>* next = ptr->forward_[0];
+            delete ptr;
+            ptr = next;
+        }
 
-		delete[] head_;
-	}
+        delete[] head_;
+    }
 
-	bool Insert(const K& key, const V& value) {
-		if (Search(key)) return false;
+    bool Insert(const K& key, const V& value) {
+        if (Search(key)) return false;
 
-		const uint32_t level = RandomLevel();
-		
-		Node<K, V>* node = new Node<K, V>(level, key, value);
-		for (uint32_t i = 0; i < node->level_; i++) {
-			Node<K, V>** ptr = &head_[i];
-			while (*ptr && (*ptr)->key_ < key) {
-				ptr = &((*ptr)->forward_[i]);
-			}
+        const uint32_t level = RandomLevel();
 
-			node->forward_[i] = *ptr;
-			*ptr = node;
-		}
+        Node<K, V>* node = new Node<K, V>(level, key, value);
+        Node<K, V>** ptr = &head_[level - 1];
 
-		count_++;
-		if (level_ < level) {
-			level_ = level;
-		}
-		return true;
-	}
+        for (int i = level - 1; i >= 0; i--, ptr--) {
+            while (*ptr && (*ptr)->key_ < key) {
+                ptr = &((*ptr)->forward_[i]);
+            }
 
-	Node<K, V>* Search(const K& key) {
-		for (int i = level_ - 1; i >= 0; i--) {
-			Node<K,V>* ptr = head_[i];
-			while (ptr && ptr->key_ < key) {
-				ptr = ptr->forward_[i];
-			}
+            node->forward_[i] = *ptr;
+            *ptr = node;
+        }
 
-			if (ptr && ptr->key_ == key) {
-				return ptr;
-			}
-		}
+        count_++;
+        if (level_ < level) {
+            level_ = level;
+        }
+        return true;
+    }
 
-		return nullptr;
-	}
+    Node<K, V>* Search(const K& key) {
+        Node<K,V>** ptr = &head_[level_ - 1];
+        for (int level = level_ - 1; level >= 0; level--, ptr--) {
+            while (*ptr && (*ptr)->key() < key) {
+                ptr = &(*ptr)->forward_[level];
+            }
 
-	void Remove(const K& key) {
-		Node<K, V>* node = nullptr;
-		for (int i = level_ - 1; i >= 0; i--) {
-			Node<K, V>** ptr = &head_[i];
-			while (*ptr && (*ptr)->key_ < key) {
-				ptr = &((*ptr)->forward_[i]);
-			}
+            if (*ptr && (*ptr)->key() == key) {
+                return *ptr;
+            }
+        }
 
-			if (*ptr && (*ptr)->key_ == key) {
-				if (node) assert(node == *ptr);
-				node = *ptr;
-				*ptr = node->forward_[i];
-			}
-		}
+        return nullptr;
+    }
 
-		if (node) {
-			count_--;
-			while (head_[level_ - 1] == nullptr) {
-				level_--;
-			}
-			delete node;
-		}
-	}
+    void Remove(const K& key) {
+        Node<K, V>* node = nullptr;
+        Node<K, V>** ptr = &head_[level_ - 1];
+        for (int i = level_ - 1; i >= 0; i--, ptr--) {
+            while (*ptr && (*ptr)->key_ < key) {
+                ptr = &((*ptr)->forward_[i]);
+            }
 
-	std::string ToString() {
-		std::stringstream ss;
-		for (int i = level_ - 1; i >= 0; i--) {
-			for (Node<K, V>* ptr = head_[i]; ptr != nullptr; ptr = ptr->forward_[i]) {
-				 ss << ptr->key() << ":" << ptr->level_ << " ---> ";
-			}
-			ss << "null\n";
-		}
-		return ss.str();
-	}
+            if (*ptr && (*ptr)->key_ == key) {
+                if (node) assert(node == *ptr);
+                node = *ptr;
+                *ptr = node->forward_[i];
+            }
+        }
 
-private:
-	uint32_t RandomLevel() const {
-		uint32_t level = 1;
-		const double p = 0.25;
-		while ((rand() & 0xffff) < 0xffff * p && level < max_level_) {
-			level++;
-		}
-		return level;
-	}
+        if (node) {
+            count_--;
+            while (level_ >= 1 && head_[level_ - 1] == nullptr) {
+                level_--;
+            }
+            delete node;
+        }
+    }
+
+    std::string ToString() {
+        std::stringstream ss;
+        for (int i = level_ - 1; i >= 0; i--) {
+            for (Node<K, V>* ptr = head_[i]; ptr != nullptr; ptr = ptr->forward_[i]) {
+                ss << ptr->key() << ":" << ptr->level_ << " ---> ";
+            }
+            ss << "null\n";
+        }
+        return ss.str();
+    }
 
 private:
-	const uint32_t max_level_;
-	uint32_t level_;
-	uint32_t count_;
-	Node<K, V>** head_;
+    uint32_t RandomLevel() const {
+        uint32_t level = 1;
+        const double p = 0.25;
+        while ((rand() & 0xffff) < 0xffff * p && level < max_level_) {
+            level++;
+        }
+        return level;
+    }
+
+private:
+    const uint32_t max_level_;
+    uint32_t level_;
+    uint32_t count_;
+    Node<K, V>** head_;
 };
